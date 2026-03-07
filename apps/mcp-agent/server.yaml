@@ -1,5 +1,4 @@
 # --- MCP Server Service ---
-# 用于让 Gateway 在集群内部访问 Server
 apiVersion: v1
 kind: Service
 metadata:
@@ -33,11 +32,25 @@ spec:
       containers:
       - name: server
         image: mcp-hr-server:v1
-        imagePullPolicy: IfNotPresent # 使用本地导入的镜像，不尝试去 Docker Hub 拉取
+        imagePullPolicy: IfNotPresent
         env:
         - name: DSN
-          # 连接在模块二中部署的 MySQL 服务
-          # 格式: user:password@tcp(service-name:port)/dbname
           value: "root:native@tcp(mysql-service:3306)/hr_db"
         ports:
         - containerPort: 8080
+        # 存活探针：检测服务是否运行
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+        # 就绪探针：检测服务是否可接收流量
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 3
+          failureThreshold: 3
